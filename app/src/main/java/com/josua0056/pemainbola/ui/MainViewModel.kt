@@ -1,15 +1,17 @@
 package com.josua0056.pemainbola.ui
 
-package com.josua0056.namapemainbola.ui
-
 import android.app.Application
 import android.content.Context
 import android.net.ConnectivityManager
 import android.net.NetworkCapabilities
 import android.net.Uri
+import androidx.core.net.toUri
 import androidx.lifecycle.AndroidViewModel
 import androidx.lifecycle.viewModelScope
-import com.josua0056.namapemainbola.data.*
+import com.josua0056.pemainbola.data.ApiService
+import com.josua0056.pemainbola.data.Player
+import com.josua0056.pemainbola.data.User
+import com.josua0056.pemainbola.data.UserPreferences
 import com.squareup.moshi.Moshi
 import com.squareup.moshi.kotlin.reflect.KotlinJsonAdapterFactory
 import kotlinx.coroutines.flow.MutableStateFlow
@@ -94,13 +96,7 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
 
     fun fetchPlayers() {
         val currentUser = _user.value ?: return
-        val app = getApplication<Application>()
-        val connectivityManager = app.getSystemService(Context.CONNECTIVITY_SERVICE) as ConnectivityManager
-        val network = connectivityManager.activeNetwork
-        val activeNetwork = connectivityManager.getNetworkCapabilities(network)
-        val isConnected = activeNetwork != null && (activeNetwork.hasTransport(NetworkCapabilities.TRANSPORT_WIFI) || activeNetwork.hasTransport(NetworkCapabilities.TRANSPORT_CELLULAR))
-
-        if (!isConnected) {
+        if (!isInternetAvailable()) {
             _error.value = "Koneksi internet tidak tersedia"
             if (_players.value.isEmpty()) {
                 _players.value = getSamplePlayers(currentUser.id)
@@ -160,17 +156,18 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
 
     fun addPlayer(name: String, club: String, imageUriString: String) {
         val currentUser = _user.value ?: return
+        if (!isInternetAvailable()) {
+            _error.value = "Tidak ada internet untuk mengirim data"
+            return
+        }
+
         viewModelScope.launch {
             _isLoading.value = true
             try {
-                val app = getApplication<Application>()
-                val uri = Uri.parse(imageUriString)
-                val inputStream: InputStream? = app.contentResolver.openInputStream(uri)
-                val file = File.createTempFile("upload_player_", ".jpg", app.cacheDir)
-                val outputStream = FileOutputStream(file)
-                inputStream?.use { input -> outputStream.use { output -> input.copyTo(output) } }
+                val uri = imageUriString.toUri()
+                val file = getFileFromUri(uri)
 
-                if (file.exists()) {
+                if (file != null && file.exists()) {
                     val requestFile = file.asRequestBody("image/jpeg".toMediaTypeOrNull())
                     val imagePart = MultipartBody.Part.createFormData("file", file.name, requestFile)
 
@@ -188,6 +185,23 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
             } finally {
                 _isLoading.value = false
             }
+        }
+    }
+
+    private fun getFileFromUri(uri: Uri): File? {
+        return try {
+            val app = getApplication<Application>()
+            val inputStream: InputStream? = app.contentResolver.openInputStream(uri)
+            val tempFile = File.createTempFile("upload_player_", ".jpg", app.cacheDir)
+            val outputStream = FileOutputStream(tempFile)
+            inputStream?.use { input ->
+                outputStream.use { output ->
+                    input.copyTo(output)
+                }
+            }
+            tempFile
+        } catch (e: Exception) {
+            null
         }
     }
 
@@ -212,5 +226,14 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
 
     fun clearError() {
         _error.value = null
+    }
+
+    private fun isInternetAvailable(): Boolean {
+        val app = getApplication<Application>()
+        val connectivityManager = app.getSystemService(Context.CONNECTIVITY_SERVICE) as ConnectivityManager
+        val network = connectivityManager.activeNetwork ?: return false
+        val activeNetwork = connectivityManager.getNetworkCapabilities(network) ?: return false
+        return activeNetwork.hasTransport(NetworkCapabilities.TRANSPORT_WIFI) ||
+                activeNetwork.hasTransport(NetworkCapabilities.TRANSPORT_CELLULAR)
     }
 }
