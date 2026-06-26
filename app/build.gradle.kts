@@ -1,7 +1,6 @@
 plugins {
     alias(libs.plugins.android.application)
     alias(libs.plugins.kotlin.compose)
-    alias { libs.plugins.android.application version "9.1.0-rc01" }
 }
 
 android {
@@ -17,7 +16,6 @@ android {
 
         testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
     }
-    // ... sisa kode android dan dependencies di bawahnya biarkan tetap sama ...
 
     buildTypes {
         release {

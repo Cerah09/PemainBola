@@ -44,7 +44,6 @@ class MainActivity : ComponentActivity() {
         super.onCreate(savedInstanceState)
         enableEdgeToEdge()
         setContent {
-            // Menggunakan nama tema bawaan Empty Activity baru
             PemainBolaTheme {
                 Surface(
                     modifier = Modifier.fillMaxSize(),
@@ -69,7 +68,6 @@ fun NamaPemainbolaApp(viewModel: MainViewModel = viewModel()) {
     var showAddDialog by remember { mutableStateOf(false) }
     var capturedImageUri by remember { mutableStateOf<Uri?>(null) }
     var tempImageUri by remember { mutableStateOf<Uri?>(null) }
-
     var playerToDelete by remember { mutableStateOf<Player?>(null) }
 
     val cameraLauncher = rememberLauncherForActivityResult(
@@ -87,10 +85,14 @@ fun NamaPemainbolaApp(viewModel: MainViewModel = viewModel()) {
         if (isGranted) {
             val timeStamp = SimpleDateFormat("yyyyMMdd_HHmmss", Locale.getDefault()).format(Date())
             val storageDir = context.getExternalFilesDir(Environment.DIRECTORY_PICTURES)
-            val file = File.createTempFile("JPEG_${timeStamp}_", ".jpg", storageDir)
-            val uri = FileProvider.getUriForFile(context, "${context.packageName}.fileprovider", file)
-            tempImageUri = uri
-            cameraLauncher.launch(uri)
+            try {
+                val file = File.createTempFile("JPEG_${timeStamp}_", ".jpg", storageDir)
+                val uri = FileProvider.getUriForFile(context, "${context.packageName}.fileprovider", file)
+                tempImageUri = uri
+                cameraLauncher.launch(uri)
+            } catch (e: Exception) {
+                Toast.makeText(context, "Gagal menyiapkan media penyimpanan.", Toast.LENGTH_SHORT).show()
+            }
         } else {
             Toast.makeText(context, "Izin kamera ditolak.", Toast.LENGTH_SHORT).show()
         }
@@ -101,10 +103,14 @@ fun NamaPemainbolaApp(viewModel: MainViewModel = viewModel()) {
         if (hasPermission) {
             val timeStamp = SimpleDateFormat("yyyyMMdd_HHmmss", Locale.getDefault()).format(Date())
             val storageDir = context.getExternalFilesDir(Environment.DIRECTORY_PICTURES)
-            val file = File.createTempFile("JPEG_${timeStamp}_", ".jpg", storageDir)
-            val uri = FileProvider.getUriForFile(context, "${context.packageName}.fileprovider", file)
-            tempImageUri = uri
-            cameraLauncher.launch(uri)
+            try {
+                val file = File.createTempFile("JPEG_${timeStamp}_", ".jpg", storageDir)
+                val uri = FileProvider.getUriForFile(context, "${context.packageName}.fileprovider", file)
+                tempImageUri = uri
+                cameraLauncher.launch(uri)
+            } catch (e: Exception) {
+                Toast.makeText(context, "Gagal menyiapkan file foto.", Toast.LENGTH_SHORT).show()
+            }
         } else {
             permissionLauncher.launch(Manifest.permission.CAMERA)
         }
